@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+> **rhicnlorg fork.** This repository is the rhicnlorg fork of `The-PR-Agent/pr-agent`. Before you change anything, read [`FORK.md`](FORK.md): it lists our changes, the upstream base, and the rules for work on the fork. Never open a pull request or push to `The-PR-Agent/pr-agent`. Use `--repo rhicnlorg/pr-agent` with `gh`.
+
 This file is the shared source of repository guidance for coding agents. Tool-specific instruction files should import it instead of repeating repository-wide rules.
 
 ## Dos and Don’ts
