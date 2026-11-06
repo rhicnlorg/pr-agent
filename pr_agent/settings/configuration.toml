@@ -192,6 +192,8 @@ publish_error_details=false # Publish a deterministic, sanitized failure reason 
 persistent_comment=true
 # Visible base heading for full and incremental review comments. Identity is tracked separately.
 review_heading = "PR Reviewer Guide"
+# Fork only (FORK.md): an id such as "thermo" gives this reviewer its own review comment. Empty uses the shared comment.
+reviewer_id = ""
 persistent_finding_state=true # Persist review finding state across complete review runs.
 # Character budget for the findings stored by earlier reviews, given to /review as context so it keeps their wording
 # instead of re-raising them reworded, and skips findings whose GitHub or GitLab inline thread someone other than PR-Agent

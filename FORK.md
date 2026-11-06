@@ -16,14 +16,14 @@ This repository is a fork of [`The-PR-Agent/pr-agent`](https://github.com/The-PR
 | --- | --- |
 | Upstream repository | `https://github.com/The-PR-Agent/pr-agent` |
 | Upstream base | `0d241cc1` on `main` (`v0.49.0-236-g0d241cc1`), 2026-11-07 |
-| Fork release tag | none yet. Format: `v<upstream version>-rhic.<n>`, for example `v0.49.0-rhic.1` |
+| Fork release tag | none yet. Format: `v<upstream version>-rhicnlorg.<n>`, for example `v0.49.0-rhicnlorg.1` |
 
 ## Changes
 
 | ID | Change | Why | Files | How to check | Upstream status |
 | --- | --- | --- | --- | --- | --- |
 | FK-1 | Fork notes: this file and the fork notice at the top of `AGENTS.md` | Tell agents and maintainers about the fork | `FORK.md`, `AGENTS.md` (first lines) | Read the files | Fork only |
-| FK-2 | `pr_reviewer.reviewer_id`: one persistent review comment per reviewer | Run several reviewers (for example `thermo`, `ui`, `security`) on one pull request. Upstream uses one fixed marker, `<!-- pr-agent:review:full -->`, so each review replaces the last | planned: `pr_agent/algo/comment_identity.py`, `pr_agent/tools/pr_reviewer.py`, `pr_agent/settings/configuration.toml`, tests | planned: `PYTHONPATH=. uv run pytest tests/unittest/test_review_comment_identity.py tests/unittest/test_hidden_comment_markers.py tests/unittest/test_pr_reviewer_finding_state.py -q` | Planned. Not offered |
+| FK-2 | `pr_reviewer.reviewer_id`: one persistent review comment per reviewer. Pattern `[a-z0-9][a-z0-9-]{0,39}`. Set it with `--pr_reviewer.reviewer_id=<id>` or `PR_REVIEWER__REVIEWER_ID`. Empty works as upstream | Run several reviewers (for example `thermo`, `ui`, `security`) on one pull request. Upstream uses one fixed marker, `<!-- pr-agent:review:full -->`, so each review replaces the last | `pr_agent/algo/comment_identity.py`, `pr_agent/tools/pr_reviewer.py`, `pr_agent/settings/configuration.toml`, `docs/docs/usage-guide/configuration_reference.md` (generated), `tests/unittest/test_reviewer_id.py`, `tests/unittest/test_config_comment_overrides.py`, `tests/unittest/test_config_reference.py` (key count) | `PYTHONPATH=. uv run pytest tests/unittest/test_reviewer_id.py tests/unittest/test_review_comment_identity.py tests/unittest/test_hidden_comment_markers.py tests/unittest/test_pr_reviewer_finding_state.py tests/unittest/test_config_reference.py tests/unittest/test_config_comment_overrides.py -q` | Fork only. Not offered |
 
 ## How to update to a new upstream version
 

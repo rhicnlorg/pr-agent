@@ -11,11 +11,12 @@ from pr_agent.algo.ai_handlers.litellm_ai_handler import LiteLLMAIHandler
 from pr_agent.algo.artifacts import get_artifact_context, prompt_boundary_markers, resolve_artifact_path
 from pr_agent.algo.comment_identity import (
     PRReviewHeader,
-    PRReviewIdentity,
     add_pr_review_identity,
     comment_authorship_available,
     get_pr_review_comment_identifiers,
     hidden_marker_forms,
+    legacy_pr_review_header,
+    pr_review_identity,
     render_hidden_marker,
 )
 from pr_agent.algo.i18n import t
@@ -423,8 +424,8 @@ class PRReviewer:
                     initial_header=f"{PRReviewHeader.REGULAR.value} 🔍",
                     update_header=True,
                     final_update_message=False,
-                    identity_marker=PRReviewIdentity.REGULAR.value,
-                    legacy_initial_header=f"{PRReviewHeader.REGULAR.value} 🔍",
+                    identity_marker=pr_review_identity(),
+                    legacy_initial_header=legacy_pr_review_header(),
                     require_agent_authorship=True,
                     fallback_on_error=False,
                     **review_thread_kwargs,
@@ -451,8 +452,8 @@ class PRReviewer:
                     initial_header=pr_review.split("\n", 1)[0],
                     update_header=True,
                     final_update_message=final_update_message,
-                    identity_marker=PRReviewIdentity.REGULAR.value,
-                    legacy_initial_header=f"{PRReviewHeader.REGULAR.value} 🔍",
+                    identity_marker=pr_review_identity(),
+                    legacy_initial_header=legacy_pr_review_header(),
                     **review_thread_kwargs,
                 )
                 if not self._review_finding_state_in_play():
@@ -494,9 +495,9 @@ class PRReviewer:
             else:
                 if self.git_provider.supports_review_comment_identity() is True:
                     identity_marker = (
-                        PRReviewIdentity.INCREMENTAL.value
+                        pr_review_identity(incremental=True)
                         if self.incremental.is_incremental
-                        else PRReviewIdentity.REGULAR.value
+                        else pr_review_identity()
                     )
                     pr_review = add_pr_review_identity(pr_review, identity_marker, self.git_provider)
                 self.git_provider.publish_comment(pr_review, **review_thread_kwargs)
@@ -575,8 +576,8 @@ class PRReviewer:
     @staticmethod
     def _as_non_authoritative_review(pr_review: str) -> str:
         identity_markers = {
-            *hidden_marker_forms(PRReviewIdentity.REGULAR.value),
-            *hidden_marker_forms(PRReviewIdentity.INCREMENTAL.value),
+            *hidden_marker_forms(pr_review_identity()),
+            *hidden_marker_forms(pr_review_identity(incremental=True)),
         }
         markerless_review = "\n".join(
             line
@@ -634,7 +635,7 @@ class PRReviewer:
             for _comment, _body in GitProvider._iter_persistent_comments(
                 provider,
                 get_pr_review_comment_identifiers(full=True, incremental=False),
-                identity_marker=PRReviewIdentity.REGULAR.value,
+                identity_marker=pr_review_identity(),
             ):
                 return True
             return False
@@ -652,7 +653,7 @@ class PRReviewer:
             for _comment, body in GitProvider._iter_persistent_comments(
                 self.git_provider,
                 identifiers,
-                identity_marker=PRReviewIdentity.REGULAR.value,
+                identity_marker=pr_review_identity(),
                 require_agent_authorship=True,
             ):
                 parsed = parse_review_state(body)
@@ -797,7 +798,7 @@ class PRReviewer:
                 # The shared persistent publisher adds the full-review identity
                 # before inserting the update suffix. Reserve both pieces so a
                 # complete state marker remains inside the provider limit.
-                identity_overhead = len(render_hidden_marker(PRReviewIdentity.REGULAR.value, self.git_provider)) + 2
+                identity_overhead = len(render_hidden_marker(pr_review_identity(), self.git_provider)) + 2
                 return value - len(update_suffix) - identity_overhead
         return None
 

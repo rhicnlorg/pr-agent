@@ -73,7 +73,7 @@ def _documented_keys(text: str) -> Counter:
 
 def test_config_reference_covers_every_active_key():
     keys = _toml_keys(CONFIG_TOML.read_text(encoding="utf-8"))
-    assert sum(keys.values()) == 307
+    assert sum(keys.values()) == 308  # rhicnlorg fork: +1 for pr_reviewer.reviewer_id (FORK.md, FK-2)
 
     assert {
         "model",

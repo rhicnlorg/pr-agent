@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import string
 from collections.abc import Iterable
 from enum import StrEnum
@@ -54,6 +55,72 @@ _REVIEW_IDENTITY_HEADER_LINES = 5
 _MARKDOWN_PUNCTUATION_ESCAPE_TABLE = str.maketrans(
     {character: f"\\{character}" for character in string.punctuation}
 )
+_HIDDEN_MARKER_REFERENCE_URL = "https://github.com/The-PR-Agent/pr-agent"
+# rhicnlorg fork (FORK.md, FK-2): a reviewer id gives each reviewer its own review comment.
+_REVIEWER_ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
+_REVIEWER_MARKER_NAME = r"(?P<name>pr-agent:review:(?:full|incremental):[a-z0-9][a-z0-9-]{0,39})"
+_REVIEWER_REVIEW_MARKER_PATTERN = re.compile(
+    rf"<!-- {_REVIEWER_MARKER_NAME} -->"
+    rf"|\[{_REVIEWER_MARKER_NAME.replace('?P<name>', '?P<reference_name>')}\]: "
+    + re.escape(_HIDDEN_MARKER_REFERENCE_URL)
+)
+
+
+def configured_reviewer_id() -> str:
+    """Return the configured reviewer id, or an empty string for the shared review comment.
+
+    An invalid id stops the run. A fallback to the shared comment would replace the review
+    of another reviewer.
+    """
+    reviewer_id = get_settings().get("pr_reviewer.reviewer_id", "")
+    if reviewer_id is None:
+        return ""
+    if not isinstance(reviewer_id, str):
+        raise ValueError("pr_reviewer.reviewer_id must be a string")
+    reviewer_id = reviewer_id.strip()
+    if not reviewer_id:
+        return ""
+    if not _REVIEWER_ID_PATTERN.fullmatch(reviewer_id):
+        raise ValueError(
+            "pr_reviewer.reviewer_id must be 1-40 lowercase letters, digits or hyphens, "
+            "and start with a letter or digit"
+        )
+    return reviewer_id
+
+
+def pr_review_identity(incremental: bool = False) -> str:
+    """Return the hidden review identity of the configured reviewer."""
+    base = PRReviewIdentity.INCREMENTAL.value if incremental else PRReviewIdentity.REGULAR.value
+    reviewer_id = configured_reviewer_id()
+    if not reviewer_id:
+        return base
+    return f"{base.removesuffix(' -->')}:{reviewer_id} -->"
+
+
+def legacy_pr_review_header() -> str | None:
+    """Return the legacy visible review heading, or None when a reviewer id is set.
+
+    The legacy heading is shared by all reviewers, so a reviewer with an id never matches on it.
+    """
+    if configured_reviewer_id():
+        return None
+    return f"{PRReviewHeader.REGULAR.value} 🔍"
+
+
+def _reviewer_marker_forms(identity: str) -> tuple[str, str] | None:
+    match = _REVIEWER_REVIEW_MARKER_PATTERN.fullmatch(identity)
+    if match is None:
+        return None
+    name = match.group("name") or match.group("reference_name")
+    return f"<!-- {name} -->", f"[{name}]: {_HIDDEN_MARKER_REFERENCE_URL}"
+
+
+def _carries_other_reviewer_identity(body: str, own_forms: tuple[str, ...]) -> bool:
+    for line in body.splitlines()[:_REVIEW_IDENTITY_HEADER_LINES]:
+        line = line.strip()
+        if line not in own_forms and _REVIEWER_REVIEW_MARKER_PATTERN.fullmatch(line):
+            return True
+    return False
 
 
 def _get_configured_heading(setting_name: str, default_heading: str) -> str:
@@ -104,9 +171,13 @@ def format_pr_questions_header(*, escape_markdown: bool = True) -> str:
 def hidden_marker_forms(identity: str) -> tuple[str, ...]:
     """Return both stored forms of a known comment identity."""
     for marker in _ALL_COMMENT_IDENTITIES:
-        reference = f"[{marker[5:-4]}]: https://github.com/The-PR-Agent/pr-agent"
+        reference = f"[{marker[5:-4]}]: {_HIDDEN_MARKER_REFERENCE_URL}"
         if identity in (marker, reference):
             return marker, reference
+    if isinstance(identity, str):
+        reviewer_forms = _reviewer_marker_forms(identity)
+        if reviewer_forms is not None:
+            return reviewer_forms
     return (identity,)
 
 
@@ -136,19 +207,30 @@ def comment_matches_any_identity(body: str, identities: Iterable[str]) -> bool:
 
 def comment_carries_other_identity(body: str, identity_marker: str | None) -> bool:
     """Return whether the comment carries a different hidden identity."""
+    own_forms = hidden_marker_forms(identity_marker) if identity_marker else ()
+    if isinstance(body, str) and _carries_other_reviewer_identity(body, own_forms):
+        return True
     return comment_matches_any_identity(
         body,
-        [identity for identity in _ALL_COMMENT_IDENTITIES if identity not in hidden_marker_forms(identity_marker)],
+        [identity for identity in _ALL_COMMENT_IDENTITIES if identity not in own_forms],
     )
 
 
 def get_pr_review_comment_identifiers(*, full: bool, incremental: bool) -> tuple[str, ...]:
-    """Return stable markers followed by legacy visible prefixes for migration."""
+    """Return stable markers followed by legacy visible prefixes for migration.
+
+    With a reviewer id, only that reviewer's markers match. The legacy headings are shared.
+    """
+    has_reviewer_id = bool(configured_reviewer_id())
     identifiers = []
     if full:
-        identifiers.extend((PRReviewIdentity.REGULAR.value, PRReviewHeader.REGULAR.value))
+        identifiers.append(pr_review_identity())
+        if not has_reviewer_id:
+            identifiers.append(PRReviewHeader.REGULAR.value)
     if incremental:
-        identifiers.extend((PRReviewIdentity.INCREMENTAL.value, PRReviewHeader.INCREMENTAL.value))
+        identifiers.append(pr_review_identity(incremental=True))
+        if not has_reviewer_id:
+            identifiers.append(PRReviewHeader.INCREMENTAL.value)
     return tuple(identifiers)
 
 
