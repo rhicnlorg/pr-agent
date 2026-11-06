@@ -16,7 +16,7 @@ This repository is a fork of [`The-PR-Agent/pr-agent`](https://github.com/The-PR
 | --- | --- |
 | Upstream repository | `https://github.com/The-PR-Agent/pr-agent` |
 | Upstream base | `0d241cc1` on `main` (`v0.49.0-236-g0d241cc1`), 2026-11-07 |
-| Fork release tag | none yet. Format: `v<upstream version>-rhicnlorg.<n>`, for example `v0.49.0-rhicnlorg.1` |
+| Fork release tag | `v0.49.0-rhicnlorg.1`. Format: `v<upstream version>-rhicnlorg.<n>`. The package version is `<upstream version>+rhicnlorg.<n>` (PEP 440 local version) |
 
 ## Changes
 
@@ -24,6 +24,7 @@ This repository is a fork of [`The-PR-Agent/pr-agent`](https://github.com/The-PR
 | --- | --- | --- | --- | --- | --- |
 | FK-1 | Fork notes: this file and the fork notice at the top of `AGENTS.md` | Tell agents and maintainers about the fork | `FORK.md`, `AGENTS.md` (first lines) | Read the files | Fork only |
 | FK-2 | `pr_reviewer.reviewer_id`: one persistent review comment per reviewer. Pattern `[a-z0-9][a-z0-9-]{0,39}`. Set it with `--pr_reviewer.reviewer_id=<id>` or `PR_REVIEWER__REVIEWER_ID`. Empty works as upstream | Run several reviewers (for example `thermo`, `ui`, `security`) on one pull request. Upstream uses one fixed marker, `<!-- pr-agent:review:full -->`, so each review replaces the last | `pr_agent/algo/comment_identity.py`, `pr_agent/tools/pr_reviewer.py`, `pr_agent/settings/configuration.toml`, `docs/docs/usage-guide/configuration_reference.md` (generated), `tests/unittest/test_reviewer_id.py`, `tests/unittest/test_config_comment_overrides.py`, `tests/unittest/test_config_reference.py` (key count) | `PYTHONPATH=. uv run pytest tests/unittest/test_reviewer_id.py tests/unittest/test_review_comment_identity.py tests/unittest/test_hidden_comment_markers.py tests/unittest/test_pr_reviewer_finding_state.py tests/unittest/test_config_reference.py tests/unittest/test_config_comment_overrides.py -q` | Fork only. Not offered |
+| FK-3 | Package version `0.49.0+rhicnlorg.1` | Show the fork release in `pip show` and `uv tool list` | `pyproject.toml`, `uv.lock` | `uv sync --locked` passes, and `uv tool list` shows `pr-agent v0.49.0+rhicnlorg.1` | Fork only |
 
 ## How to update to a new upstream version
 
@@ -31,4 +32,5 @@ This repository is a fork of [`The-PR-Agent/pr-agent`](https://github.com/The-PR
 2. Rebase the fork commits onto the new upstream tag or commit.
 3. For each row in [Changes](#changes): resolve conflicts in the listed files, then run its check.
 4. Remove the row of a change that upstream now has, and drop its commit.
-5. Update [Upstream base](#upstream-base), and tag the result with the next fork release tag.
+5. Set the `pyproject.toml` version to `<upstream version>+rhicnlorg.<n>`, run `uv lock`, and check `uv sync --locked`.
+6. Update [Upstream base](#upstream-base), and tag the result with the next fork release tag.
